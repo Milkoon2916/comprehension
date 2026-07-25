@@ -23,6 +23,7 @@
     color:var(--ink);
     font-family:Georgia,"Nanum Myeongjo","Noto Serif KR",serif;
     padding:40px 20px 80px;
+    position:relative;
   }
   .wrap{max-width:980px;margin:0 auto;}
   header{margin-bottom:28px;}
@@ -133,15 +134,14 @@
 
   #watermark{
     display:none;
-    position:fixed;
-    top:50%;left:50%;
-    transform:translate(-50%,-50%) rotate(-28deg);
-    width:320px;
-    opacity:0.10;
+    position:absolute;
+    top:0;left:0;right:0;bottom:0;
+    background-repeat:repeat;
+    background-position:top left;
+    opacity:0.12;
     z-index:1;
     pointer-events:none;
   }
-  #watermark img{width:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   #watermark.on{display:block;}
   .sheet, .sheet *{position:relative;z-index:2;}
 
@@ -149,7 +149,7 @@
     .panel,.toolbar{display:none;}
     .grid{grid-template-columns:1fr;}
     body{background:#fff;padding:0;}
-    #watermark{position:fixed;opacity:0.12;}
+    #watermark{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     .key{
       display:block !important;
       page-break-before:always;
@@ -161,7 +161,7 @@
 </style>
 </head>
 <body>
-<div id="watermark"><img id="watermarkImg" src="" alt=""></div>
+<div id="watermark"></div>
 <div class="wrap">
   <header>
     <p class="eyebrow">Reading &amp; Comprehension Lab</p>
@@ -241,31 +241,45 @@ const savedKey = localStorage.getItem('ox_gemini_key');
 if (savedKey) { apikeyEl.value = savedKey; rememberEl.checked = true; }
 
 // 워터마크 로고: 이 브라우저에만 저장됨 (업로드 서버 없음)
+// 업로드된 로고를 여백이 있는 타일로 만들어 문서 전체에 반복시킴 (몇 페이지로 인쇄되든 모든 페이지에 나오도록)
 const watermarkEl = document.getElementById('watermark');
-const watermarkImgEl = document.getElementById('watermarkImg');
 const logoInputEl = document.getElementById('logoInput');
 const logoStatusEl = document.getElementById('logoStatus');
+const TILE_SIZE = 260;
+const TILE_LOGO_MAX = 120;
 
-function setWatermark(dataUrl){
-  if(!dataUrl){
+function setWatermark(tileDataUrl){
+  if(!tileDataUrl){
     watermarkEl.classList.remove('on');
-    watermarkImgEl.src = '';
+    watermarkEl.style.backgroundImage = '';
     logoStatusEl.innerHTML = '';
     return;
   }
-  watermarkImgEl.src = dataUrl;
+  watermarkEl.style.backgroundImage = `url(${tileDataUrl})`;
+  watermarkEl.style.backgroundSize = `${TILE_SIZE}px ${TILE_SIZE}px`;
   watermarkEl.classList.add('on');
-  logoStatusEl.innerHTML = '로고가 설정되었어요. <a href="#" id="removeLogo">제거</a>';
+  logoStatusEl.innerHTML = '로고가 설정되었어요 (모든 페이지에 반복 표시). <a href="#" id="removeLogo">제거</a>';
   document.getElementById('removeLogo').addEventListener('click', (e) => {
     e.preventDefault();
-    localStorage.removeItem('ox_watermark_logo');
+    localStorage.removeItem('ox_watermark_tile');
     logoInputEl.value = '';
     setWatermark(null);
   });
 }
 
-const savedLogo = localStorage.getItem('ox_watermark_logo');
-if(savedLogo){ setWatermark(savedLogo); }
+function buildWatermarkTile(img, cb){
+  const canvas = document.createElement('canvas');
+  canvas.width = TILE_SIZE;
+  canvas.height = TILE_SIZE;
+  const ctx = canvas.getContext('2d');
+  const scale = Math.min(TILE_LOGO_MAX / img.width, TILE_LOGO_MAX / img.height, 1);
+  const w = img.width * scale, h = img.height * scale;
+  ctx.drawImage(img, (TILE_SIZE - w) / 2, (TILE_SIZE - h) / 2, w, h);
+  cb(canvas.toDataURL('image/png'));
+}
+
+const savedTile = localStorage.getItem('ox_watermark_tile');
+if(savedTile){ setWatermark(savedTile); }
 
 logoInputEl.addEventListener('change', () => {
   const file = logoInputEl.files[0];
@@ -276,9 +290,14 @@ logoInputEl.addEventListener('change', () => {
   }
   const reader = new FileReader();
   reader.onload = () => {
-    const dataUrl = reader.result;
-    localStorage.setItem('ox_watermark_logo', dataUrl);
-    setWatermark(dataUrl);
+    const img = new Image();
+    img.onload = () => {
+      buildWatermarkTile(img, (tileDataUrl) => {
+        localStorage.setItem('ox_watermark_tile', tileDataUrl);
+        setWatermark(tileDataUrl);
+      });
+    };
+    img.src = reader.result;
   };
   reader.readAsDataURL(file);
 });
