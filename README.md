@@ -1,39 +1,69 @@
 # OX 리딩 워크북 메이커 (Gemini / 개인 API 키 버전)
 
 영어 지문을 넣으면 한글 O/X 10문항 + 영어 O/X 5문항 내용일치 워크북을
-만들어주는 정적(서버 없는) 웹사이트입니다. **사용자 각자가 자신의 Google
-Gemini API 키를 입력**해서 사용하므로, 운영자에게는 API 비용이 전혀
-발생하지 않습니다.
+만들어주는 웹사이트입니다. **사용자 각자가 자신의 Google Gemini API
+키를 입력**해서 사용하므로, 운영자에게는 API 비용이 전혀 발생하지
+않습니다.
 
 ## 구조
 
-파일이 `index.html` 하나뿐입니다. 서버, 빌드 과정, 환경변수 전부 필요
-없습니다. 브라우저가 사용자의 키로 구글 Gemini API
-(`generativelanguage.googleapis.com`)를 직접 호출합니다.
+실제 로직은 `index.html` 하나뿐인 정적 페이지입니다 (API 키 입력, 문제
+생성, 화면 렌더링 전부 브라우저에서 처리 — 브라우저가 사용자의 키로
+구글 Gemini API를 직접 호출합니다). `server.js`와 `package.json`은
+Render 같은 **Web Service**(정적 사이트 호스팅이 아닌, Node 프로세스가
+떠 있어야 하는 배포 방식)에서 이 `index.html`을 서빙하기 위한 아주
+가벼운 파일입니다. 외부 패키지 설치가 필요 없습니다.
 
 ## 로컬에서 확인하기
 
-`index.html`을 더블클릭해서 여는 것도 되지만, 일부 브라우저는 `file://`
-주소에서 CORS를 더 엄격히 처리할 수 있어 정상 동작하지 않을 수 있습니다.
-아래처럼 간단한 로컬 서버로 열어보는 걸 권장합니다:
-
 ```bash
-npx serve .
-# 또는
-python3 -m http.server 8000
+npm start
 ```
 
-## 배포 (전부 무료로 가능)
+브라우저에서 http://localhost:3000 접속.
 
-정적 파일이므로 아무 정적 호스팅에나 올리면 됩니다:
+## Render에 Docker로 배포하기 (권장)
 
-- **GitHub Pages**: 저장소에 `index.html`을 올리고 Settings → Pages에서
-  활성화
-- **Netlify**: netlify.com에서 이 폴더를 드래그 앤 드롭하면 바로 배포
-- **Vercel**: `vercel.com`에 이 폴더를 그대로 올리면 자동 배포
+1. 이 폴더를 GitHub 저장소에 올립니다 (`Dockerfile`, `index.html`,
+   `server.js`, `package.json`이 저장소 루트에 있어야 합니다).
+2. Render 대시보드 → **New → Web Service** → 해당 저장소 연결
+3. Render가 저장소에서 `Dockerfile`을 자동으로 감지합니다.
+   **Runtime**이 자동으로 **Docker**로 잡히는지 확인하세요
+   (수동 설정 화면에서 Language/Runtime 항목이 "Docker"로 표시되면
+   Build/Start Command는 따로 입력할 필요 없습니다 — Dockerfile의
+   `CMD`가 그대로 실행됩니다).
+4. 별도 환경변수는 필요 없습니다.
+5. Deploy 완료되면 `https://xxx.onrender.com` 주소가 생깁니다.
 
-배포 후 생기는 주소(`https://xxx.github.io` 등)를 학생들에게 공유하면
-됩니다.
+### 로컬에서 Docker로 확인하기 (Docker가 설치되어 있다면)
+
+```bash
+docker build -t ox-workbook .
+docker run -p 3000:3000 ox-workbook
+```
+
+브라우저에서 http://localhost:3000 접속.
+
+## Node 런타임으로 배포하기 (Dockerfile 없이, 대안)
+
+1. 이 폴더를 GitHub 저장소에 올립니다 (`index.html`, `server.js`,
+   `package.json`이 저장소 루트에 있어야 합니다).
+2. Render 대시보드 → **New → Web Service** → 해당 저장소 연결
+3. 설정값:
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+4. Deploy. 별도 환경변수는 필요 없습니다 (API 키는 서버가 아니라
+   사용자 브라우저에서 직접 쓰입니다).
+5. 완료되면 `https://xxx.onrender.com` 주소가 생깁니다 — 이 링크를
+   학생들에게 공유하면 됩니다.
+
+## 정적 사이트로도 배포 가능 (선택)
+
+서버 프로세스가 굳이 필요 없다면 `index.html`만 GitHub Pages,
+Netlify, Vercel 같은 정적 호스팅에 올려도 동일하게 동작합니다. 이
+경우 Render에서는 Web Service 대신 Static Site를 선택하고 Publish
+Directory를 `.`로 지정하면 됩니다.
 
 ## 사용자(학생) 입장에서 준비할 것
 
@@ -46,13 +76,11 @@ python3 -m http.server 8000
 
 ## 알아둘 점
 
-- Gemini API는 무료 등급(free tier)이 있어 개인이 가볍게 쓰는 데는
-  대부분 비용이 들지 않습니다. 다만 각자 자신의 Google 계정 사용량
-  한도 내에서 쓰는 것이므로, 사용법은 각자 안내해주는 게 좋습니다.
 - API 키는 사용자의 브라우저에서 구글 서버로 **직접** 전송됩니다.
-  이 사이트를 만든 사람이나 호스팅 서버를 거치지 않으므로, 키가
-  새어나갈 경로 자체가 없습니다. 다만 사용자에게는 "본인의 API 키는
-  비밀번호처럼 다른 사람과 공유하지 마세요"라고 안내해주세요.
+  이 사이트의 서버(Web Service로 배포한 경우에도)는 정적 HTML 파일만
+  내려줄 뿐, 요청 자체를 중계하지 않으므로 키가 새어나갈 경로가
+  없습니다. 다만 사용자에게 "본인의 API 키는 비밀번호처럼 다른 사람과
+  공유하지 마세요"라고 안내해주세요.
 - 문제 생성 모델은 `index.html` 안 `MODEL` 상수(현재
   `gemini-2.5-flash`)에서 바꿀 수 있습니다.
 

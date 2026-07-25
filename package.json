@@ -1,0 +1,12 @@
+{
+  "name": "ox-workbook-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "지문을 넣으면 한글/영어 O-X 워크북을 만들어주는 정적 사이트 (개인 Gemini API 키 사용)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
