@@ -122,15 +122,26 @@
     font-family:"Courier New",monospace;font-size:12px;cursor:pointer;color:var(--ink);
   }
   .toolbar button:hover{border-color:var(--stamp);color:var(--stamp);}
-  .key{display:none;margin-top:14px;padding:14px 16px;background:#FBF8F1;border:1px dashed var(--line);
-    font-family:"Courier New",monospace;font-size:12.5px;line-height:1.9;}
+  .key{display:none;margin-top:14px;padding:14px 16px;background:#FBF8F1;border:1px dashed var(--line);}
   .key.show{display:block;}
-  .key b{color:var(--stamp);}
+  .key h3{font-size:18px;font-weight:400;margin:0 0 4px;}
+  .key .key-sub{font-size:12px;color:var(--ink-soft);margin:0 0 16px;font-family:"Courier New",monospace;}
+  .key-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px 6px;
+    font-family:"Courier New",monospace;font-size:13px;}
+  .key-grid span{display:block;}
+  .key-grid b{color:var(--stamp);margin-right:4px;}
 
   @media print{
     .panel,.toolbar{display:none;}
     .grid{grid-template-columns:1fr;}
     body{background:#fff;padding:0;}
+    .key{
+      display:block !important;
+      page-break-before:always;
+      break-before:page;
+      border:none;
+      background:#fff;
+    }
   }
 </style>
 </head>
@@ -318,7 +329,11 @@ function render(data, passage){
     <button onclick="toggleKey()">정답 보기 / 숨기기</button>
     <button onclick="window.print()">인쇄 / PDF 저장</button>
   </div>`;
-  html += `<div class="key" id="answerKey">${items.map(it => `<b>${it.num}</b> ${it.answer}`).join('&nbsp;&nbsp;&nbsp;')}</div>`;
+  html += `<div class="key" id="answerKey">
+    <h3>정답 (Answer Key)</h3>
+    <p class="key-sub">${escapeHtml(data.titleKo)}</p>
+    <div class="key-grid">${items.map(it => `<span><b>${it.num}</b>${it.answer}</span>`).join('')}</div>
+  </div>`;
 
   sheet.innerHTML = html;
 }
