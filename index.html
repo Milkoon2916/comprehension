@@ -131,10 +131,25 @@
   .key-grid span{display:block;}
   .key-grid b{color:var(--stamp);margin-right:4px;}
 
+  #watermark{
+    display:none;
+    position:fixed;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%) rotate(-28deg);
+    width:320px;
+    opacity:0.10;
+    z-index:1;
+    pointer-events:none;
+  }
+  #watermark img{width:100%;display:block;}
+  #watermark.on{display:block;}
+  .sheet, .sheet *{position:relative;z-index:2;}
+
   @media print{
     .panel,.toolbar{display:none;}
     .grid{grid-template-columns:1fr;}
     body{background:#fff;padding:0;}
+    #watermark{position:fixed;opacity:0.12;}
     .key{
       display:block !important;
       page-break-before:always;
@@ -146,6 +161,7 @@
 </style>
 </head>
 <body>
+<div id="watermark"><img id="watermarkImg" src="" alt=""></div>
 <div class="wrap">
   <header>
     <p class="eyebrow">Reading &amp; Comprehension Lab</p>
@@ -167,6 +183,12 @@
           무료로 발급받을 수 있어요. 키는 여러분의 브라우저에서 구글 서버로 직접 전송되며,
           이 사이트를 운영하는 사람에게는 전달되거나 저장되지 않습니다.
         </p>
+      </div>
+
+      <div class="row">
+        <label for="logoInput">인쇄 워터마크용 로고 (선택)</label>
+        <input type="file" id="logoInput" accept="image/*">
+        <div id="logoStatus" class="hint" style="margin-top:6px;"></div>
       </div>
 
       <div class="row">
@@ -212,6 +234,49 @@ const rememberEl = document.getElementById('remember');
 // 저장된 키가 있으면 불러오기 (이 브라우저에만 저장됨, 서버로 전송되지 않음)
 const savedKey = localStorage.getItem('ox_gemini_key');
 if (savedKey) { apikeyEl.value = savedKey; rememberEl.checked = true; }
+
+// 워터마크 로고: 이 브라우저에만 저장됨 (업로드 서버 없음)
+const watermarkEl = document.getElementById('watermark');
+const watermarkImgEl = document.getElementById('watermarkImg');
+const logoInputEl = document.getElementById('logoInput');
+const logoStatusEl = document.getElementById('logoStatus');
+
+function setWatermark(dataUrl){
+  if(!dataUrl){
+    watermarkEl.classList.remove('on');
+    watermarkImgEl.src = '';
+    logoStatusEl.innerHTML = '';
+    return;
+  }
+  watermarkImgEl.src = dataUrl;
+  watermarkEl.classList.add('on');
+  logoStatusEl.innerHTML = '로고가 설정되었어요. <a href="#" id="removeLogo">제거</a>';
+  document.getElementById('removeLogo').addEventListener('click', (e) => {
+    e.preventDefault();
+    localStorage.removeItem('ox_watermark_logo');
+    logoInputEl.value = '';
+    setWatermark(null);
+  });
+}
+
+const savedLogo = localStorage.getItem('ox_watermark_logo');
+if(savedLogo){ setWatermark(savedLogo); }
+
+logoInputEl.addEventListener('change', () => {
+  const file = logoInputEl.files[0];
+  if(!file) return;
+  if(file.size > 2 * 1024 * 1024){
+    logoStatusEl.textContent = '2MB 이하 이미지를 사용해주세요.';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    localStorage.setItem('ox_watermark_logo', dataUrl);
+    setWatermark(dataUrl);
+  };
+  reader.readAsDataURL(file);
+});
 
 
 function buildSystemPrompt(numKo, numEn){
