@@ -141,7 +141,7 @@
     z-index:1;
     pointer-events:none;
   }
-  #watermark img{width:100%;display:block;}
+  #watermark img{width:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   #watermark.on{display:block;}
   .sheet, .sheet *{position:relative;z-index:2;}
 
@@ -189,6 +189,11 @@
         <label for="logoInput">인쇄 워터마크용 로고 (선택)</label>
         <input type="file" id="logoInput" accept="image/*">
         <div id="logoStatus" class="hint" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="row">
+        <label for="source">출처 (선택, 인쇄 시 상단에 표시)</label>
+        <input type="text" id="source" placeholder="예: OO영어학원 2026년 7월 모의고사">
       </div>
 
       <div class="row">
@@ -311,6 +316,7 @@ async function generate(){
   const apikey = apikeyEl.value.trim();
   const passage = document.getElementById('passage').value.trim();
   const model = document.getElementById('model').value;
+  const source = document.getElementById('source').value.trim();
   const numKo = parseInt(document.getElementById('numKo').value, 10) || 10;
   const numEn = parseInt(document.getElementById('numEn').value, 10) || 5;
   errEl.style.display = 'none';
@@ -360,7 +366,7 @@ async function generate(){
     let text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
     text = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(text);
-    render(parsed, passage);
+    render(parsed, passage, source);
   }catch(e){
     console.error(e);
     errEl.textContent = e.message || '생성 중 오류가 발생했어요. 다시 시도해주세요.';
@@ -372,13 +378,15 @@ async function generate(){
   }
 }
 
-function render(data, passage){
+function render(data, passage, source){
   const items = [...data.groupA, ...data.groupB];
   const koRange = `01~${data.groupA[data.groupA.length-1].num}`;
   const enRange = `${data.groupB[0].num}~${data.groupB[data.groupB.length-1].num}`;
 
   let html = '';
-  html += `<span class="stamp-badge">생성 완료</span>`;
+  if(source){
+    html += `<span class="stamp-badge">${escapeHtml(source)}</span>`;
+  }
   html += `<h2>${escapeHtml(data.titleKo)}</h2>`;
   html += `<p class="sub">${escapeHtml(data.titleEn)}</p>`;
   html += `<div class="instr">다음 글을 읽고 물음에 답하시오.</div>`;
@@ -396,7 +404,7 @@ function render(data, passage){
   </div>`;
   html += `<div class="key" id="answerKey">
     <h3>정답 (Answer Key)</h3>
-    <p class="key-sub">${escapeHtml(data.titleKo)}</p>
+    <p class="key-sub">${source ? escapeHtml(source) + ' · ' : ''}${escapeHtml(data.titleKo)}</p>
     <div class="key-grid">${items.map(it => `<span><b>${it.num}</b>${it.answer}</span>`).join('')}</div>
   </div>`;
 
